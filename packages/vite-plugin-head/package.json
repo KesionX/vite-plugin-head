@@ -1,0 +1,30 @@
+{
+  "name": "vite-plugin-head",
+  "version": "1.0.1",
+  "description": "Modify, add, delete Metadata in the head element.",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KesionX/vite-plugin-head.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KesionX/vite-plugin-head/issues"
+  },
+  "homepage": "https://github.com/KesionX/vite-plugin-head#readme",
+  "scripts": {
+    "build": "pnpm clear | tsc --project .",
+    "clear": "rm -rf .dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "vue3",
+    "vite-plugin-head",
+    "vite-plugin-html"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "parse5": "^7.0.0"
+  }
+}
