@@ -1,20 +1,24 @@
-import { parse, serialize } from "parse5";
+import { parse, serialize, parseFragment } from "parse5";
 import type {
   Node,
   Element,
   Template,
+  TextNode,
+  ParentNode,
 } from "parse5/dist/tree-adapters/default";
 import type { TAG_NAMES } from "parse5/dist/common/html";
 
 type Tags = keyof typeof TAG_NAMES;
 type PrePost = "pre" | "post";
-type OptionKeys = Lowercase<Tags | PrePost>;
+type Other = "#text";
+type OptionKeys = Lowercase<Tags | PrePost | Other>;
 type IOption = {
   [key in OptionKeys]: (node: Node, parent: Node | null) => void | boolean;
 };
 
 interface IVitePluginHeadOption {
   cssPreload?: boolean;
+  title?: string;
 }
 
 const traverse = (root: Node, options: Partial<IOption>) => {
@@ -28,7 +32,7 @@ const traverse = (root: Node, options: Partial<IOption>) => {
     }
     if (options) {
       for (const key in options) {
-        if (key !== "pre" && key !== "post" && options[key as OptionKeys]) {
+        if (key !== "pre" && key !== "post" && node.nodeName === key) {
           const call = options[key as OptionKeys];
           call && call(node, parent);
         }
@@ -74,17 +78,43 @@ function handleCssPreload(node: Node) {
   }
 }
 
+function handleTitle(node: Node, title: string) {
+  traverse(node, {
+    "#text": (tNode) => {
+      (tNode as TextNode).value = title;
+    },
+  });
+}
+
 function headTransform(html: string, option: IVitePluginHeadOption) {
   const htmlAst = parse(html, {
     sourceCodeLocationInfo: true,
   });
+  let hasTitle = false;
+  let headNode: null | Element = null;
   traverse(htmlAst, {
+    head(node) {
+      headNode = node as Element;
+    },
     link(node) {
       if (option?.cssPreload) {
         handleCssPreload(node);
       }
     },
+    title(node) {
+      hasTitle = true;
+      if (option?.title) {
+        handleTitle(node, option.title);
+      }
+    },
   });
+
+  if (!hasTitle && headNode) {
+    const titleNode = parseFragment(`<title>${option.title}</title>`)
+      .childNodes[0];
+    (headNode as Element).childNodes.unshift(titleNode as Element);
+    (titleNode as Element).parentNode = headNode as ParentNode;
+  }
 
   const resHtml = serialize(htmlAst);
   return resHtml;
