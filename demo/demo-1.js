@@ -1,8 +1,13 @@
 const pluginHead = require('../packages/vite-plugin-head/dist').default;
 
 
-pluginHead({
-    title: 'kesion'
+const res = pluginHead({
+    title: 'kesion',
+    transformLink(attrs) {
+        attrs['custom-key'] = "hello";
+        attrs['rel'] = "mo-preload";
+        return attrs;
+    }
 }).transformIndexHtml(`
 <!DOCTYPE html><html lang="en"><head>
     <meta charset="UTF-8">
@@ -153,3 +158,5 @@ pluginHead({
 
 </body></html>
 `)
+
+console.log(res);

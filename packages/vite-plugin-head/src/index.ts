@@ -7,6 +7,7 @@ import type {
   ParentNode,
 } from "parse5/dist/tree-adapters/default";
 import type { TAG_NAMES } from "parse5/dist/common/html";
+import { Attribute } from "parse5/dist/common/token";
 
 type Tags = keyof typeof TAG_NAMES;
 type PrePost = "pre" | "post";
@@ -16,9 +17,19 @@ type IOption = {
   [key in OptionKeys]: (node: Node, parent: Node | null) => void | boolean;
 };
 
+interface IAttr {
+  [key: string]: string;
+}
+
+/**
+ * add,remove,update attrs for yourself.
+ */
+type TransformLinkHook = (attrs: IAttr, href: string | undefined) => IAttr;
+
 interface IVitePluginHeadOption {
   cssPreload?: boolean;
   title?: string;
+  transformLink?: TransformLinkHook;
 }
 
 const traverse = (root: Node, options: Partial<IOption>) => {
@@ -58,6 +69,28 @@ const traverse = (root: Node, options: Partial<IOption>) => {
   visit(root, null);
 };
 
+/**
+ * get attrs
+ * @param node element
+ * @param keys default all
+ */
+function getAttrs(node: Element, keys?: string[] | null) {
+  const obj: Record<string, string> = {};
+  for (let index = 0; index < node.attrs?.length; index++) {
+    const attr = node.attrs[index];
+    if (!keys) {
+      if (attr?.name) {
+        obj[attr.name] = attr.value;
+      }
+      continue;
+    }
+    if (attr?.name && keys.includes(attr.name)) {
+      obj[attr.name] = attr.value;
+    }
+  }
+  return obj;
+}
+
 function handleCssPreload(node: Node) {
   let attrRel = null;
   let attrHref = null;
@@ -86,6 +119,21 @@ function handleTitle(node: Node, title: string) {
   });
 }
 
+function handleTransformLink(node: Node, transformLink: TransformLinkHook) {
+  const attrs = getAttrs(node as Element);
+  const newAttrs = transformLink(attrs, attrs["href"]);
+  const attrList: Attribute[] = [];
+  for (const key in newAttrs) {
+    if (newAttrs[key]) {
+      attrList.push({
+        name: key,
+        value: newAttrs[key] as string,
+      });
+    }
+  }
+  (node as Element).attrs = attrList;
+}
+
 function headTransform(html: string, option: IVitePluginHeadOption) {
   const htmlAst = parse(html, {
     sourceCodeLocationInfo: true,
@@ -99,6 +147,9 @@ function headTransform(html: string, option: IVitePluginHeadOption) {
     link(node) {
       if (option?.cssPreload) {
         handleCssPreload(node);
+      }
+      if (option?.transformLink) {
+        handleTransformLink(node, option.transformLink);
       }
     },
     title(node) {
